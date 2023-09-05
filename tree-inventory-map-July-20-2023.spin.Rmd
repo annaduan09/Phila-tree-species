@@ -1,3 +1,5 @@
+
+```{r }
 #### prep ####
 library(sf)
 library(dplyr)
@@ -218,4 +220,13 @@ waffle(t, rows = 15, colors = pal_1, keep = TRUE, xlab = "Species",
 ggplot(tree_species, aes(fill = TREE_NAME, values = count)) +
   geom_waffle(n_rows = 15, colour = "white", na.rm = TRUE) 
  # coord_equal() +
+```
 
+
+
+---
+title: tree-inventory-map-July-20-2023.R
+author: annaduan
+date: '2023-09-05'
+
+---
