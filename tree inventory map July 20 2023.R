@@ -26,7 +26,7 @@ mapTheme <- function(base_size = 15) {
     axis.title = element_blank(),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
-    panel.border = element_rect(colour = "white", fill=NA, size=2),
+    panel.border = element_rect(colour = "white", fill=NA, size=0),
     panel.background = element_blank(),
     legend.background = element_blank(),
     legend.position="right"
@@ -65,22 +65,24 @@ tree <- st_read("PPR_Tree_Inventory_2022.geojson")%>%
   filter(is.na(TREE_NAME) == FALSE & TREE_NAME != "Unknown" & TREE_NAME != "" & TREE_NAME != " ")
 
 nj <- zctas(state = "NJ", year = 2010) %>%
-  dplyr::select(geometry)%>%
+  dplyr::select(geometry, STATEFP10)%>%
   st_transform("ESRI:102729")
 
 pa <- zctas(state = "PA", year = 2010) %>%
-  dplyr::select(geometry)%>%
+  dplyr::select(geometry, STATEFP10)%>%
   st_transform("ESRI:102729")
 
 pa_nj <- rbind(nj, pa)
 #phl_bound <- st_union(neigh) %>%
 #  st_buffer(10000)
 
-pa_st <- roads(year = "2020", state = "PA", county = c("Delaware", "Philadelphia", "Montgomery", "Bucks")) %>%
+#, county = c("Delaware", "Philadelphia", "Montgomery", "Bucks")
+pa_st <- primary_secondary_roads(year = "2020", state = "PA") %>%
   dplyr::select(geometry)%>%
   st_transform("ESRI:102729")
 
-nj_st <- roads(year = "2020", state = "NJ", county = c("Camden", "Gloucester", "Burlington")) %>%
+#, county = c("Camden", "Gloucester", "Burlington")
+nj_st <- primary_secondary_roads(year = "2020", state = "NJ") %>%
   dplyr::select(geometry)%>%
   st_transform("ESRI:102729")
 
@@ -93,6 +95,10 @@ base_zcta <- pa_nj %>%
   st_make_valid() %>%
   st_crop(xmin= 2650588, ymin= 194650.8, xmax= 2760108, ymax= 314963.8) %>%
   erase_water()
+
+base_st <- base_st %>%
+  st_intersection(st_union(base_zcta)) %>%
+  st_make_valid()
 
 #### prep data ####
 streets_buffer <- streets %>%
@@ -174,36 +180,37 @@ st_map +
   theme(legend.position = "none")
 ##### neighborhood #####
 ggplot() +
-  geom_sf(data = base_zcta, fill = "gray30", color = NA, size = 10) +
-  geom_sf(data = base_st, color = "gray25", size = 0.2) +
+  geom_sf(data = base_zcta, fill = "gray20", color = "gray30", size = 10) +
+  geom_sf(data = base_st, color = "gray40", size = 0.1) +
   geom_sf(data = tree_neigh %>% filter(is.na(TREE_NAME) == FALSE), aes(fill = TREE_NAME), color = "white") +
   scale_fill_manual(values=pal_1) +
   labs(subtitle = "Most common tree by neighborhood", fill = "Species") +
   mapTheme() + theme(legend.position = c(0.8, 0.25),
-                     panel.background = element_rect(fill = "gray20"),
+                     panel.background = element_rect(fill = "gray10", size = 0),
                      legend.text = element_text(color = "white", face = "italic"),
                      legend.title = element_text(color = "chartreuse1", face = "bold"))
 
+
 ##### Proportional symbols #####
-ggplot() +
-  geom_sf(data = base_zcta, fill = "gray35", color = NA, size = 10) +
-  geom_sf(data = base_st, color = "gray40", size = 0.5) +
-  geom_sf(data = neigh, fill = NA, color = "gray45", alpha = 0.2) +
-  geom_sf(data = tree_neigh %>% st_centroid() %>% filter(is.na(TREE_NAME) == FALSE), 
-          aes(fill = TREE_NAME, size = count_species), color = "white", shape = 21, 
-          alpha = 0.8) +
-  scale_size(range=c(2,20)) +
-  scale_fill_manual(values=pal_1) +
-  labs(subtitle = "Most common tree by neighborhood", fill = "Species") +
-  mapTheme() + theme(legend.position = "bottom",
-                     panel.background = element_rect(fill = "gray30"))
+# ggplot() +
+#   geom_sf(data = base_zcta, fill = "gray35", color = NA, size = 10) +
+#   geom_sf(data = base_st, color = "gray40", size = 0.5) +
+#   geom_sf(data = neigh, fill = NA, color = "gray45", alpha = 0.2) +
+#   geom_sf(data = tree_neigh %>% st_centroid() %>% filter(is.na(TREE_NAME) == FALSE), 
+#           aes(fill = TREE_NAME, size = count_species), color = "white", shape = 21, 
+#           alpha = 0.8) +
+#   scale_size(range=c(2,20)) +
+#   scale_fill_manual(values=pal_1) +
+#   labs(subtitle = "Most common tree by neighborhood", fill = "Species") +
+#   mapTheme() + theme(legend.position = "bottom",
+#                      panel.background = element_rect(fill = "gray30"))
 
 ##### Cartogram #####
-phl_cont <- cartogram_ncont(tree_neigh, "count_species")
-# plot it
-tm_shape(tree_neigh) + tm_borders() +
-  tm_shape(phl_cont) + tm_polygons("count_species", style = "jenks") +
-  tm_layout(frame = FALSE, legend.position = c("left", "bottom"))
+# phl_cont <- cartogram_ncont(tree_neigh, "count_species")
+# # plot it
+# tm_shape(tree_neigh) + tm_borders() +
+#   tm_shape(phl_cont) + tm_polygons("count_species", style = "jenks") +
+#   tm_layout(frame = FALSE, legend.position = c("left", "bottom"))
 
 ##### Waffle chart #####
 t <- tree_species %>%
@@ -213,9 +220,4 @@ t <- tree_species %>%
 
 waffle(t, rows = 15, colors = pal_1, keep = TRUE, xlab = "Species", 
        size = 2, legend_pos = "bottom")
-  
-
-ggplot(tree_species, aes(fill = TREE_NAME, values = count)) +
-  geom_waffle(n_rows = 15, colour = "white", na.rm = TRUE) 
- # coord_equal() +
 
