@@ -96,6 +96,10 @@ base_zcta <- pa_nj %>%
   st_crop(xmin= 2650588, ymin= 194650.8, xmax= 2760108, ymax= 314963.8) %>%
   erase_water()
 
+base_state <- base_zcta %>%
+  group_by(STATEFP10) %>%
+  summarize(geometry = st_union(geometry))
+
 base_st <- base_st %>%
   st_intersection(st_union(base_zcta)) %>%
   st_make_valid()
@@ -171,6 +175,7 @@ st_map <- ggplot() +
 
 t <- neigh %>%
   filter(MAPNAME %in% c("University City", "Old City"))
+
 st_map +
   coord_sf(
     xlim = c(2681071, 2699984),
@@ -180,15 +185,16 @@ st_map +
   theme(legend.position = "none")
 ##### neighborhood #####
 ggplot() +
-  geom_sf(data = base_zcta, fill = "gray20", color = "gray30", size = 10) +
-  geom_sf(data = base_st, color = "gray40", size = 0.1) +
-  geom_sf(data = tree_neigh %>% filter(is.na(TREE_NAME) == FALSE), aes(fill = TREE_NAME), color = "white") +
+  geom_sf(data = base_zcta, fill = "gray20", color = "gray25", size = 10) +
+  geom_sf(data = base_st, color = "gray35", size = 0.1) +
+  geom_sf(data = base_state, color = "gray40", fill = NA) +
+  geom_sf(data = tree_neigh %>% filter(is.na(TREE_NAME) == FALSE), aes(fill = TREE_NAME), color = "gray99") +
   scale_fill_manual(values=pal_1) +
   labs(subtitle = "Most common tree by neighborhood", fill = "Species") +
-  mapTheme() + theme(legend.position = c(0.8, 0.25),
+  mapTheme() + theme(legend.position = c(0.82, 0.22),
                      panel.background = element_rect(fill = "gray10", size = 0),
                      legend.text = element_text(color = "white", face = "italic"),
-                     legend.title = element_text(color = "chartreuse1", face = "bold"))
+                     legend.title = element_text(color = "white", face = "bold"))
 
 
 ##### Proportional symbols #####
@@ -216,8 +222,8 @@ ggplot() +
 t <- tree_species %>%
   arrange(desc(count)) %>%
   mutate(count = count/500) %>%
-  head(23) 
+  head(10) 
 
-waffle(t, rows = 15, colors = pal_1, keep = TRUE, xlab = "Species", 
+waffle(t, rows = 10, colors = pal_1, keep = TRUE, xlab = "Species", 
        size = 2, legend_pos = "bottom")
 
