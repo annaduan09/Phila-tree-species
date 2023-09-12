@@ -42,15 +42,15 @@ find_mode <- function(x) {
 
 #### read data ####
 sf_use_s2(FALSE)
-neigh <- st_read("Neighborhoods_Philadelphia/Neighborhoods_Philadelphia.shp") %>%
+neigh <- st_read("Data/Neighborhoods_Philadelphia/Neighborhoods_Philadelphia.shp") %>%
   st_transform("ESRI:102729") %>%
   dplyr::select(geometry, MAPNAME)
-streets <- st_read("Streets_Arterials.geojson")%>%
+streets <- st_read("Data/Street_Centerline.geojson")%>%
   st_transform("ESRI:102729") %>%
   group_by(ST_NAME) %>%
   summarize(geometry = st_union(geometry))
 
-tree <- st_read("PPR_Tree_Inventory_2022.geojson")%>%
+tree <- st_read("Data/PPR_Tree_Inventory_2022.geojson")%>%
   st_transform("ESRI:102729") %>%
   mutate(TREE_NAME = sub(".*- ", "", TREE_NAME),
          TREE_NAME = str_to_title(TREE_NAME),
@@ -163,18 +163,21 @@ tree_neigh$TREE_NAME <- factor(tree_neigh$TREE_NAME, levels = c("Maple", "London
 
 ##### streets #####
 st_map <- ggplot() +
-  geom_sf(data = base_zcta, fill = "gray35", color = NA, size = 10) +
-  geom_sf(data = base_st, color = "gray45") +
+  geom_sf(data = base_zcta, fill = "gray20", color = "gray25", size = 10) +
+  geom_sf(data = base_st, color = "gray35", size = 0.1) +
+  geom_sf(data = base_state, color = "gray40", fill = NA) +
   geom_sf(data = tree_st %>% filter(is.na(TREE_NAME) == FALSE), aes(color = TREE_NAME, fill = TREE_NAME)) +
    scale_color_manual(values=pal_1) +
    scale_fill_manual(values=pal_1) +
   labs(subtitle = "Most common tree by street", color = "Species", fill = "Species") +
-  mapTheme()  + theme(legend.position = c(0.8, 0.3),
-                      panel.background = element_rect(fill = "gray25"),
-                      legend.box.background = element_rect(fill = "gray95"))
+  mapTheme() + theme(legend.position = c(0.82, 0.27),
+                     panel.background = element_rect(fill = "gray10", size = 0),
+                     legend.text = element_text(color = "white", face = "italic"),
+                     legend.title = element_text(color = "white", face = "bold"))
 
-t <- neigh %>%
-  filter(MAPNAME %in% c("University City", "Old City"))
+# I used this to figure out the bounding box dimensions I used below
+# t <- neigh %>%
+#   filter(MAPNAME %in% c("University City", "Old City"))
 
 st_map +
   coord_sf(
@@ -183,6 +186,20 @@ st_map +
     expand = FALSE
   ) + 
   theme(legend.position = "none")
+
+##### streets table #####
+tree_st %>%
+  mutate(ST_NAME = str_to_title(ST_NAME)) %>%
+  filter(ST_NAME %in% c("Race", "Cherry", "Arch", "Chestnut", "Walnut", "Locust", "Spruce",
+                        "Pine", "South")) %>%
+  mutate(ST_NAME = ifelse(ST_NAME == "Race", "Race (originally Sassafras)",
+                          ifelse(ST_NAME == "Arch", "Arch (originally Mulberry)",
+                                 ifelse(ST_NAME == "South", "South (originally Cedar)",
+                                        ST_NAME)))) %>%
+  rename(Street = ST_NAME,
+         Most_Common_Tree = TREE_NAME) %>%
+  st_drop_geometry() %>%
+  pander(caption = "Tree Street Names")
 ##### neighborhood #####
 ggplot() +
   geom_sf(data = base_zcta, fill = "gray20", color = "gray25", size = 10) +
